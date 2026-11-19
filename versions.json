@@ -1,1 +1,41 @@
-{}
+{
+  "nginx": {
+    "base": "alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",
+    "built_at": "2026-11-19T15:46:31Z",
+    "commit": "a2a986d19aac4a79a330e6e0b5171aae4e521926",
+    "config": "5af7b0b4c3f1",
+    "digest": "sha256:bc0b9b579a1afcafb5a1b54baf3180edc3bfb2997442ef472800918b219db0c5",
+    "image": "ghcr.io/obbywiki/nginx",
+    "tags": [
+      "1.31.9-alpine",
+      "1.31-alpine",
+      "mainline-alpine",
+      "alpine"
+    ],
+    "trees": {
+      "mainline/alpine": "ca1012bc4b2a95ca506b9b88cb1736a7052ee225",
+      "mainline/alpine-slim": "a63d9eb80a2a00a17da84134573243c76c32135c"
+    },
+    "upstream": "https://github.com/nginx/docker-nginx.git",
+    "version": "1.31.9"
+  },
+  "php": {
+    "base": "debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2",
+    "built_at": "2026-11-19T15:46:24Z",
+    "commit": "3b25f4162a9bd144d3f447d03cb8fe16c0d2c9cc",
+    "config": "3156288e638d",
+    "digest": "sha256:4712cb0154b462fdb297bc992f3efd8b03dcef5a558f36db12333c05061938a6",
+    "image": "ghcr.io/obbywiki/php",
+    "tags": [
+      "8.5.13-fpm-trixie",
+      "8.5.13-fpm",
+      "8.5-fpm-trixie",
+      "8.5-fpm"
+    ],
+    "trees": {
+      "8.5/trixie/fpm": "cd72cd3f8e3ae9de21cefc39dfe4656e0ebd21f6"
+    },
+    "upstream": "https://github.com/docker-library/php.git",
+    "version": "8.5.13"
+  }
+}
