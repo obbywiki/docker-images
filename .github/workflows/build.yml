@@ -1,0 +1,166 @@
+name: build
+
+on:
+  schedule:
+    # twice an hour, off the top of the hour when GitHub's scheduler is busiest
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Rebuild every image even if nothing changed upstream
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - images.json
+      - scripts/**
+      - .github/workflows/build.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      plan: ${{ steps.check.outputs.plan }}
+      matrix: ${{ steps.check.outputs.matrix }}
+      images: ${{ steps.check.outputs.images }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: check
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ "$FORCE" = "true" ]; then
+            python3 scripts/images.py check --force
+          else
+            python3 scripts/images.py check
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.images != '[]'
+    name: build ${{ matrix.image }} (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.check.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Set up buildx
+        run: docker buildx create --use --driver docker-container
+
+      - name: Build and push by digest
+        env:
+          PLAN: ${{ needs.check.outputs.plan }}
+          IMAGE: ${{ matrix.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: python3 scripts/images.py build --image "$IMAGE" --platform "$PLATFORM"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.slug }}
+          path: .work/digests/${{ matrix.slug }}
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: [check, build]
+    # still run when one image failed, so the others get published
+    if: ${{ !cancelled() && needs.check.outputs.images != '[]' }}
+    name: merge ${{ matrix.image }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.check.outputs.images) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-${{ matrix.image }}-*
+          path: .work/digests
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Create multi-arch image
+        env:
+          PLAN: ${{ needs.check.outputs.plan }}
+          IMAGE: ${{ matrix.image }}
+        run: python3 scripts/images.py merge --image "$IMAGE"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: result-${{ matrix.image }}
+          path: .work/results/${{ matrix.image }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  record:
+    needs: [check, merge]
+    if: ${{ !cancelled() && needs.check.outputs.images != '[]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: result-*
+          path: .work/results
+          merge-multiple: true
+
+      - name: Update versions.json
+        env:
+          PLAN: ${{ needs.check.outputs.plan }}
+        run: python3 scripts/images.py record
+
+      # the commit also keeps the repo "active", so GitHub doesn't disable the schedule after 60 days without activity
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add versions.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit --quiet --file .work/commit-msg.txt
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet && git push --quiet && exit 0
+            sleep 5
+          done
+          exit 1

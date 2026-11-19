@@ -1,0 +1,30 @@
+{
+  "runners": {
+    "linux/amd64": "ubuntu-24.04",
+    "linux/arm64": "ubuntu-24.04-arm"
+  },
+  "images": {
+    "php": {
+      "name": "php",
+      "repo": "https://github.com/docker-library/php.git",
+      "branch": "master",
+      "chain": ["8.5/trixie/fpm"],
+      "version_env": "PHP_VERSION",
+      "tags": ["{version}-fpm-trixie", "{version}-fpm", "{minor}-fpm-trixie", "{minor}-fpm"],
+      "platforms": ["linux/amd64", "linux/arm64"],
+      "release_feed": {
+        "url": "https://www.php.net/releases/?json&version=8.5",
+        "key": "version"
+      }
+    },
+    "nginx": {
+      "name": "nginx",
+      "repo": "https://github.com/nginx/docker-nginx.git",
+      "branch": "master",
+      "chain": ["mainline/alpine-slim", "mainline/alpine"],
+      "version_env": "NGINX_VERSION",
+      "tags": ["{version}-alpine", "{minor}-alpine", "mainline-alpine", "alpine"],
+      "platforms": ["linux/amd64", "linux/arm64"]
+    }
+  }
+}
