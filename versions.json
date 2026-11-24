@@ -20,11 +20,11 @@
     "version": "1.31.10"
   },
   "php": {
-    "base": "debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2",
-    "built_at": "2026-11-19T15:46:24Z",
+    "base": "debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0",
+    "built_at": "2026-11-24T10:59:52Z",
     "commit": "3b25f4162a9bd144d3f447d03cb8fe16c0d2c9cc",
     "config": "3156288e638d",
-    "digest": "sha256:4712cb0154b462fdb297bc992f3efd8b03dcef5a558f36db12333c05061938a6",
+    "digest": "sha256:e6e383a5ccbc8e8730d45da9cb6a28b2881fadff3cfbc4f49fd10caf5dfcd543",
     "image": "ghcr.io/obbywiki/php",
     "tags": [
       "8.5.13-fpm-trixie",
